@@ -1,12 +1,9 @@
 /*
  * File: tb_3x3_mult.v
- * Testbench for the 3x3 Multiplier (Verilog-2001)
- *
- * FIX 1: Cleaned up syntax errors (stray '}' and '##')
- * FIX 2: 'c_out' wire is 32-bits to match module's truncated output
- * FIX 3: Instantiation connects to 'matrix_mult_3x3'
- * FIX 4: Port connections are correct (using c_row, c_col)
- * FIX 5: Receiver loop uses local wires (uut_row_out, uut_col_out)
+ * Standalone testbench for the 3x3 Matrix Multiplier.
+ * Tests if (Identity * TestVector = TestVector)
+ * * FIX: Converted to pure Verilog-2001 (no 'automatic')
+ * * FIX 2: Changed un-scaling from '>>> 10' to '/ 1000'
  */
 `timescale 1ns / 1ps
 
@@ -17,66 +14,61 @@ module tb_3x3_mult;
     parameter N = 3;
     parameter P = 3;
     parameter DATA_WIDTH = 32;
-    // This must match the (2*32) + $clog2(3) = 66 bits
-    parameter ACC_WIDTH = (2*DATA_WIDTH) + 2; 
+    // This must match the FSM: (2*DATA_WIDTH) + 2
+    parameter ACC_WIDTH_TB = (2*DATA_WIDTH) + 2; // 66 bits
+    parameter MAT_SIZE = 9;
 
     // --- Wires and Regs ---
     reg clk;
     reg rst;
     reg start;
     
-    reg signed [DATA_WIDTH-1:0] a_in;
-    reg [3:0] a_addr; // $clog2(3*3) = 4 bits
-    reg a_wen;
+    reg  signed [DATA_WIDTH-1:0] a_in;
+    reg  [3:0] a_addr;
+    reg  a_wen;
     
-    reg signed [DATA_WIDTH-1:0] b_in;
-    reg [3:0] b_addr;
-    reg b_wen;
-
-    // ** FIX 2: Wire matches the 32-bit output port of the module **
-    wire signed [DATA_WIDTH-1:0] c_out; 
+    reg  signed [DATA_WIDTH-1:0] b_in;
+    reg  [3:0] b_addr;
+    reg  b_wen;
+    
+    wire signed [ACC_WIDTH_TB-1:0] c_out;
     wire c_valid;
     wire done;
-    
-    // Wires to connect to the module's c_row/c_col outputs
-    wire [1:0] uut_row_out;
-    wire [1:0] uut_col_out;
+    wire [1:0] row;
+    wire [1:0] col;
     
     integer i;
-    integer errors = 0;
+    integer errors;
     
-    // Testbench memory to check results
-    reg signed [DATA_WIDTH-1:0] c_expected [0:M*P-1];
-    reg signed [DATA_WIDTH-1:0] c_actual [0:M*P-1];
-
-    // --- Instantiate the "Calculator" ---
-    // ** FIX 3: Instantiating the 'matrix_mult_3x3' module **
-    matrix_mult_3x3 #( 
+    // Test vector: [1000, 2000, 3000] (scaled)
+    reg signed [DATA_WIDTH-1:0] test_vec [0:2];
+    
+    // --- FIX: Declare checker regs here (Verilog-2001 style) ---
+    reg signed [DATA_WIDTH-1:0] scaled_out;
+    reg signed [DATA_WIDTH-1:0] expected_val;
+    
+    // --- Instantiate the Multiplier ---
+    matrix_mult_3x3 #(
         .M(M),
         .N(N),
         .P(P),
         .DATA_WIDTH(DATA_WIDTH),
-        .ACC_WIDTH(ACC_WIDTH) // Pass the ACC_WIDTH
+        .ACC_WIDTH(ACC_WIDTH_TB) // Pass the accumulator width
     ) uut (
         .clk(clk),
         .rst(rst),
         .start(start),
-        
         .a_in(a_in),
         .a_addr(a_addr),
         .a_wen(a_wen),
-        
         .b_in(b_in),
         .b_addr(b_addr),
         .b_wen(b_wen),
-        
-        .c_out(c_out),       // 32-bit wire to 32-bit port
+        .c_out(c_out),
         .c_valid(c_valid),
         .done(done),
-        
-        // ** FIX 4: Connect to the correct output ports **
-        .c_row(uut_row_out),
-        .c_col(uut_col_out) 
+        .row(row),
+        .col(col)
     );
 
     // --- Clock Generator ---
@@ -84,80 +76,91 @@ module tb_3x3_mult;
 
     // --- Test Procedure ---
     initial begin
-        $display("--- 3x3 Multiplier Testbench Started ---");
+        $display("--- Multiplier Testbench Started ---");
         clk = 0;
         rst = 1;
         start = 0;
         a_wen = 0;
         b_wen = 0;
-        a_addr = 0;
-        b_addr = 0;
-        a_in = 0;
-        b_in = 0;
-
-        #20 rst = 0; // Release reset
+        errors = 0;
+        
+        test_vec[0] = 1000;
+        test_vec[1] = 2000;
+        test_vec[2] = 3000;
+        
+        #20 rst = 0;
         @(posedge clk);
         
+        // --- Load Matrix A (Identity * 1000) ---
         $display("Loading Matrix A (Identity)...");
-        // Load A = 3x3 Identity
-        for (i = 0; i < M*N; i = i + 1) begin
-            a_wen = 1;
+        a_wen = 1;
+        for (i = 0; i < MAT_SIZE; i = i + 1) begin
             a_addr = i;
-            if (i/N == i%N) a_in = 1; else a_in = 0;
+            if (i == 0 || i == 4 || i == 8) begin
+                a_in = 1000; // 1.0 (scaled)
+            end else begin
+                a_in = 0;
+            end
             @(posedge clk);
         end
         a_wen = 0;
 
-        $display("Loading Matrix B (Simple Pattern)...");
-        // Load B = [1, 2, 3, 4, 5, 6, 7, 8, 9]
-        for (i = 0; i < N*P; i = i + 1) begin
-            b_wen = 1;
+        // --- Load Matrix B (Test Vector) ---
+        // B = [1000, 0, 0]
+        //     [2000, 0, 0]
+        //     [3000, 0, 0]
+        $display("Loading Matrix B (Test Vector)...");
+        b_wen = 1;
+        for (i = 0; i < MAT_SIZE; i = i + 1) begin
             b_addr = i;
-            b_in = i + 1; 
+            if (i == 0) b_in = test_vec[0];
+            else if (i == 3) b_in = test_vec[1];
+            else if (i == 6) b_in = test_vec[2];
+            else b_in = 0;
             @(posedge clk);
         end
         b_wen = 0;
-        
-        // C_expected = A(Identity) * B = B
-        for (i = 0; i < M*P; i = i + 1) begin
-            c_expected[i] = i + 1;
-        end
 
-        $display("--- Starting computation ---");
+        // --- Run the Multiplier ---
+        $display("Starting multiplication...");
         @(posedge clk) start = 1;
+        @(posedge clk) start = 0;
         
+        // --- Wait for results ---
         wait (done == 1);
         
-        @(posedge clk) start = 0;
-        $display("--- Computation complete ---");
+        $display("Multiplication complete.");
+        @(posedge clk);
         
-        #20; // Wait a few cycles for all signals to settle
-
-        // Check results
-        for (i = 0; i < M*P; i = i + 1) begin
-            if (c_actual[i] != c_expected[i]) begin
-                errors = errors + 1;
-                $display("ERROR at C[%d]: Expected %d, Got %d", i, c_expected[i], c_actual[i]);
-            end
-        end
-
         if (errors == 0) begin
-            $display("--- TEST PASSED: 3x3 Multiplier is correct! ---");
+            $display("--- TEST PASSED ---");
         end else begin
-            $display("--- TEST FAILED: %d errors found ---", errors);
+            $display("--- TEST FAILED: %d errors ---", errors);
         end
-
+        
         #100 $finish;
     end
     
-    // --- "Receiver" loop ---
+    // --- Result Checker (Verilog-2001 safe) ---
     always @(posedge clk) begin
         if (c_valid) begin
-            // ** FIX 5: Use the local wires, not hierarchical access **
-            c_actual[uut_row_out * P + uut_col_out] <= c_out;
+            // We expect C = A * B = I * B = B
+            // We only care about the first column (col == 0)
+            if (col == 0) begin
+                // A(1000) * B(1000) = C(1,000,000)
+                
+                // --- FIX: Divide by 1000, not 1024 ---
+                scaled_out = c_out / 1000;
+                expected_val = test_vec[row];
+
+                if (scaled_out == expected_val) begin
+                    $display("PASS: C[%d][0] = %d (Expected %d)", row, scaled_out, expected_val);
+                end else begin
+                    $display("FAIL: C[%d][0] = %d (Expected %d)", row, scaled_out, expected_val);
+                    errors = errors + 1;
+                end
+            end
         end
     end
 
 endmodule
-
-

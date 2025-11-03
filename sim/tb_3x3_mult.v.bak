@@ -2,7 +2,6 @@
  * File: tb_3x3_mult.v
  * Standalone testbench for the 3x3 Matrix Multiplier.
  * Tests if (Identity * TestVector = TestVector)
- * * FIX: Converted to pure Verilog-2001 (no 'automatic')
  */
 `timescale 1ns / 1ps
 
@@ -41,10 +40,6 @@ module tb_3x3_mult;
     
     // Test vector: [1000, 2000, 3000] (scaled)
     reg signed [DATA_WIDTH-1:0] test_vec [0:2];
-    
-    // --- FIX: Declare checker regs here (Verilog-2001 style) ---
-    reg signed [DATA_WIDTH-1:0] scaled_out;
-    reg signed [DATA_WIDTH-1:0] expected_val;
     
     // --- Instantiate the Multiplier ---
     matrix_mult_3x3 #(
@@ -140,7 +135,7 @@ module tb_3x3_mult;
         #100 $finish;
     end
     
-    // --- Result Checker (Verilog-2001 safe) ---
+    // --- Result Checker ---
     always @(posedge clk) begin
         if (c_valid) begin
             // We expect C = A * B = I * B = B
@@ -148,10 +143,8 @@ module tb_3x3_mult;
             if (col == 0) begin
                 // A(1000) * B(1000) = C(1,000,000)
                 // We must scale C back by 1000 (10 bits)
-                
-                // --- FIX: Assign to regs declared above ---
-                scaled_out = c_out >>> 10;
-                expected_val = test_vec[row];
+                automatic signed [DATA_WIDTH-1:0] scaled_out = c_out >>> 10;
+                automatic signed [DATA_WIDTH-1:0] expected_val = test_vec[row];
 
                 if (scaled_out == expected_val) begin
                     $display("PASS: C[%d][0] = %d (Expected %d)", row, scaled_out, expected_val);

@@ -1,14 +1,17 @@
 /*
  * File: matrix_mult_3x3.v
  * Module: matrix_mult_3x3
- * FIX: Output 'c_out' is now full precision (64-bit) 
- * to handle fixed-point scaling.
+ * FIX: Output 'c_out' is full precision.
+ * FIX: FSM logic uses internal registers (row_reg, col_reg)
+ * and latched outputs (c_row, c_col) to prevent
+ * testbench race conditions.
  */
 module matrix_mult_3x3 #(
     parameter DATA_WIDTH = 32,
     parameter M = 3,
     parameter N = 3,
-    parameter P = 3
+    parameter P = 3,
+    parameter ACC_WIDTH=66
 )(
     input  wire clk,
     input  wire rst,
@@ -25,23 +28,29 @@ module matrix_mult_3x3 #(
     input  wire b_wen,
 
     // Output Interface
-    // FIX: Output is now wide enough for the accumulator
-    output reg signed [2*DATA_WIDTH + $clog2(N) - 1:0] c_out, 
+    // FIX: Output is wide enough for the accumulator
+    // Verilog-2001 requires the $clog2 function for portability
+    output reg signed [2*DATA_WIDTH + 2 - 1:0] c_out, 
     output reg c_valid,
     output reg done,
     
     // Outputs to help the FSM track state
-    output reg [1:0] row, // $clog2(M) = 2 bits
-    output reg [1:0] col  // $clog2(P) = 2 bits
+    // ** FIX: These are the latched outputs for the testbench **
+    output reg [1:0] c_row, // $clog2(M) = 2 bits
+    output reg [1:0] c_col  // $clog2(P) = 2 bits
 );
 
     localparam MAT_A_SIZE = M*N;
     localparam MAT_B_SIZE = N*P;
-    localparam ACC_WIDTH = (2*DATA_WIDTH) + $clog2(N); 
+    // Note: $clog2(N) where N=3 is 2.
+    localparam ACC_WIDTH = (2*DATA_WIDTH) + 2; 
 
     reg signed [DATA_WIDTH-1:0] A [0:MAT_A_SIZE-1];
     reg signed [DATA_WIDTH-1:0] B [0:MAT_B_SIZE-1];
     
+    // ** FIX: Internal FSM registers for state **
+    reg [1:0] row_reg; 
+    reg [1:0] col_reg;
     reg [1:0] k_count; // $clog2(N) = 2 bits
     
     reg signed [ACC_WIDTH-1:0] accumulator;
@@ -54,7 +63,8 @@ module matrix_mult_3x3 #(
     reg [2:0] state;
 
     wire signed [2*DATA_WIDTH-1:0] product;
-    assign product = $signed(A[row*N + k_count]) * $signed(B[k_count*P + col]);
+    // ** FIX: 'assign' uses internal FSM registers **
+    assign product = $signed(A[row_reg*N + k_count]) * $signed(B[k_count*P + col_reg]);
 
     // Memory write logic
     always @(posedge clk) begin
@@ -62,28 +72,21 @@ module matrix_mult_3x3 #(
         if (b_wen) B[b_addr] <= b_in;
     end
 
-    // FSM output latches
-    always @(posedge clk) begin
-        if(rst) begin
-            c_row <= 0;
-            c_col <= 0;
-        end else if (state == S_OUTPUT) begin
-            c_row <= row;
-            c_col <= col;
-        end
-    end
-
+    // ** FIX: This block is removed as it's part of the main FSM now **
+    
     // Main FSM logic
     always @(posedge clk or posedge rst) begin
         if (rst) begin
             state <= S_IDLE;
-            row <= 0;
-            col <= 0;
+            row_reg <= 0;
+            col_reg <= 0;
             k_count <= 0;
             accumulator <= 0;
             c_valid <= 0;
             done <= 0;
             c_out <= 0;
+            c_row <= 0; // Reset latched output
+            c_col <= 0; // Reset latched output
         end else begin
             c_valid <= 0; // c_valid is only high for one cycle
             done <= 0;    // done is only high for one cycle
@@ -91,8 +94,8 @@ module matrix_mult_3x3 #(
             case (state)
                 S_IDLE: begin
                     if (start) begin
-                        row <= 0;
-                        col <= 0;
+                        row_reg <= 0;
+                        col_reg <= 0;
                         k_count <= 0;
                         accumulator <= 0;
                         state <= S_COMPUTE;
@@ -110,24 +113,31 @@ module matrix_mult_3x3 #(
                 end
 
                 S_ACC_FINAL: begin
+                    // This state allows the last accumulation to finish
                     state <= S_OUTPUT;
                 end
                 
                 S_OUTPUT: begin
                     c_out <= accumulator; // FIX: Output the full 66-bit value
                     c_valid <= 1;
+                    
+                    // ** FIX: Latch the *current* row/col to the outputs **
+                    c_row <= row_reg;
+                    c_col <= col_reg;
+                    
                     accumulator <= 0; // Reset for next cell
                     
-                    if (col == P-1) begin
-                        col <= 0;
-                        if (row == M-1) begin
+                    // ** FIX: Logic increments internal registers **
+                    if (col_reg == P-1) begin
+                        col_reg <= 0;
+                        if (row_reg == M-1) begin
                             state <= S_DONE; // Finished all rows
                         end else begin
-                            row <= row + 1;
+                            row_reg <= row_reg + 1;
                             state <= S_COMPUTE; // Next row
                         end
                     end else begin
-                        col <= col + 1;
+                        col_reg <= col_reg + 1;
                         state <= S_COMPUTE; // Next column
                     end
                 end
@@ -142,3 +152,5 @@ module matrix_mult_3x3 #(
         end
     end
 endmodule
+
+

@@ -1,155 +1,143 @@
 /*
  * File: matrix_mult_3x3.v
- * Module: matrix_mult_3x3
- * FIX: Output 'c_out' is full precision.
- * FIX: FSM logic uses internal registers (row_reg, col_reg)
- * and latched outputs (c_row, c_col) to prevent
- * testbench race conditions.
+ * Tool-belt module: Multiplies two 3x3 matrices (A * B = C)
+ * * FIX: Added the 'ACC_WIDTH' parameter to match the FSM.
  */
+`timescale 1ns / 1ps
+
 module matrix_mult_3x3 #(
-    parameter DATA_WIDTH = 32,
     parameter M = 3,
     parameter N = 3,
-    parameter P = 3
+    parameter P = 3,
+    parameter DATA_WIDTH = 32,
+    // --- FIX: Added this parameter ---
+    parameter ACC_WIDTH = 66 // (2*DATA_WIDTH) + 2
 )(
     input  wire clk,
     input  wire rst,
     input  wire start,
-
-    // Interface for Matrix A
+    
+    // Matrix A inputs
     input  wire signed [DATA_WIDTH-1:0] a_in,
-    input  wire [3:0] a_addr, // $clog2(3*3) = 4 bits
+    input  wire [3:0] a_addr,
     input  wire a_wen,
-
-    // Interface for Matrix B
+    
+    // Matrix B inputs
     input  wire signed [DATA_WIDTH-1:0] b_in,
-    input  wire [3:0] b_addr, // $clog2(3*3) = 4 bits
+    input  wire [3:0] b_addr,
     input  wire b_wen,
-
-    // Output Interface
-    // FIX: Output is wide enough for the accumulator
-    // Verilog-2001 requires the $clog2 function for portability
-    output reg signed [2*DATA_WIDTH + 2 - 1:0] c_out, 
+    
+    // Matrix C outputs
+    // --- FIX: Use ACC_WIDTH parameter ---
+    output reg signed [ACC_WIDTH-1:0] c_out,
     output reg c_valid,
     output reg done,
     
-    // Outputs to help the FSM track state
-    // ** FIX: These are the latched outputs for the testbench **
-    output reg [1:0] c_row, // $clog2(M) = 2 bits
-    output reg [1:0] c_col  // $clog2(P) = 2 bits
+    // Output helpers to know which element is valid
+    output reg [1:0] row,
+    output reg [1:0] col
 );
 
-    localparam MAT_A_SIZE = M*N;
-    localparam MAT_B_SIZE = N*P;
-    // Note: $clog2(N) where N=3 is 2.
-    localparam ACC_WIDTH = (2*DATA_WIDTH) + 2; 
+    // Internal BRAMs for matrices
+    reg signed [DATA_WIDTH-1:0] a_ram [0:M*N-1];
+    reg signed [DATA_WIDTH-1:0] b_ram [0:N*P-1];
 
-    reg signed [DATA_WIDTH-1:0] A [0:MAT_A_SIZE-1];
-    reg signed [DATA_WIDTH-1:0] B [0:MAT_B_SIZE-1];
+    // Internal accumulator
+    // --- FIX: Use ACC_WIDTH parameter ---
+    reg signed [ACC_WIDTH-1:0] c_acc;
+
+    // FSM States
+    localparam STATE_IDLE = 0;
+    localparam STATE_RUN  = 1;
+    localparam STATE_DONE = 2;
     
-    // ** FIX: Internal FSM registers for state **
-    reg [1:0] row_reg; 
-    reg [1:0] col_reg;
-    reg [1:0] k_count; // $clog2(N) = 2 bits
+    reg [1:0] state;
     
-    reg signed [ACC_WIDTH-1:0] accumulator;
+    // Loop counters
+    reg [1:0] i_row; // M (rows in A/C)
+    reg [1:0] j_col; // P (cols in B/C)
+    reg [1:0] k_sum; // N (cols in A / rows in B)
 
-    localparam S_IDLE      = 3'd0;
-    localparam S_COMPUTE   = 3'd1;
-    localparam S_ACC_FINAL = 3'd2; 
-    localparam S_OUTPUT    = 3'd3;
-    localparam S_DONE      = 3'd4;
-    reg [2:0] state;
-
-    wire signed [2*DATA_WIDTH-1:0] product;
-    // ** FIX: 'assign' uses internal FSM registers **
-    assign product = $signed(A[row_reg*N + k_count]) * $signed(B[k_count*P + col_reg]);
-
-    // Memory write logic
+    // Handle BRAM writes
     always @(posedge clk) begin
-        if (a_wen) A[a_addr] <= a_in;
-        if (b_wen) B[b_addr] <= b_in;
+        if (a_wen) a_ram[a_addr] <= a_in;
+        if (b_wen) b_ram[b_addr] <= b_in;
     end
-
-    // ** FIX: This block is removed as it's part of the main FSM now **
     
-    // Main FSM logic
+    // Main FSM
     always @(posedge clk or posedge rst) begin
         if (rst) begin
-            state <= S_IDLE;
-            row_reg <= 0;
-            col_reg <= 0;
-            k_count <= 0;
-            accumulator <= 0;
+            state <= STATE_IDLE;
+            done <= 0;
+            c_valid <= 0;
+            c_out <= 0;
+            c_acc <= 0;
+            i_row <= 0;
+            j_col <= 0;
+            k_sum <= 0;
+            row <= 0;
+            col <= 0;
+        end else begin
+            // Defaults
             c_valid <= 0;
             done <= 0;
-            c_out <= 0;
-            c_row <= 0; // Reset latched output
-            c_col <= 0; // Reset latched output
-        end else begin
-            c_valid <= 0; // c_valid is only high for one cycle
-            done <= 0;    // done is only high for one cycle
-
+            
             case (state)
-                S_IDLE: begin
+                STATE_IDLE: begin
                     if (start) begin
-                        row_reg <= 0;
-                        col_reg <= 0;
-                        k_count <= 0;
-                        accumulator <= 0;
-                        state <= S_COMPUTE;
+                        i_row <= 0;
+                        j_col <= 0;
+                        k_sum <= 0;
+                        c_acc <= 0; // Clear accumulator for first element
+                        state <= STATE_RUN;
                     end
                 end
                 
-                S_COMPUTE: begin
-                    accumulator <= accumulator + product;
-                    if (k_count == N-1) begin
-                        k_count <= 0;
-                        state <= S_ACC_FINAL; // Done accumulating for this cell
-                    end else begin
-                        k_count <= k_count + 1;
-                    end
-                end
-
-                S_ACC_FINAL: begin
-                    // This state allows the last accumulation to finish
-                    state <= S_OUTPUT;
-                end
-                
-                S_OUTPUT: begin
-                    c_out <= accumulator; // FIX: Output the full 66-bit value
-                    c_valid <= 1;
+                STATE_RUN: begin
+                    // This state calculates one element C[i,j]
+                    // C[i,j] = sum(A[i,k] * B[k,j]) for k=0 to N-1
                     
-                    // ** FIX: Latch the *current* row/col to the outputs **
-                    c_row <= row_reg;
-                    c_col <= col_reg;
+                    // Perform one multiply-accumulate step
+                    c_acc <= c_acc + (a_ram[i_row*N + k_sum] * b_ram[k_sum*P + j_col]);
                     
-                    accumulator <= 0; // Reset for next cell
-                    
-                    // ** FIX: Logic increments internal registers **
-                    if (col_reg == P-1) begin
-                        col_reg <= 0;
-                        if (row_reg == M-1) begin
-                            state <= S_DONE; // Finished all rows
+                    if (k_sum == N-1) begin
+                        // This is the last summation step
+                        c_valid <= 1; // The output is valid on this cycle
+                        c_out <= c_acc + (a_ram[i_row*N + k_sum] * b_ram[k_sum*P + j_col]);
+                        row <= i_row;
+                        col <= j_col;
+                        c_acc <= 0; // Clear acc for next element
+                        
+                        // Move to next element
+                        if (j_col == P-1) begin
+                            if (i_row == M-1) begin
+                                state <= STATE_DONE; // Finished all elements
+                            end else begin
+                                i_row <= i_row + 1; // Next row
+                                j_col <= 0;
+                                k_sum <= 0;
+                            end
                         end else begin
-                            row_reg <= row_reg + 1;
-                            state <= S_COMPUTE; // Next row
+                            j_col <= j_col + 1; // Next col
+                            k_sum <= 0;
                         end
+                        
                     end else begin
-                        col_reg <= col_reg + 1;
-                        state <= S_COMPUTE; // Next column
+                        // Next summation step
+                        k_sum <= k_sum + 1;
                     end
                 end
                 
-                S_DONE: begin
+                STATE_DONE: begin
                     done <= 1;
-                    state <= S_IDLE;
+                    if (!start) begin
+                        state <= STATE_IDLE;
+                    end
                 end
                 
-                default: state <= S_IDLE;
+                default: state <= STATE_IDLE;
             endcase
         end
     end
+
 endmodule
-
-

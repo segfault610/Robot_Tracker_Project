@@ -1,0 +1,134 @@
+/*
+ * File: tb_robot_tracker.v
+ * The "World" Testbench.
+ * Reads noisy data, runs the FSM, writes filtered data.
+ */
+`timescale 1ns / 1ps
+
+module tb_robot_tracker;
+
+    // --- Parameters ---
+    parameter DATA_WIDTH = 32;
+    parameter N_STEPS = 200; // Must match your Python script
+
+    // --- Wires and Regs ---
+    reg clk;
+    reg rst;
+    reg start;
+    
+    // Inputs to the FSM
+    reg signed [DATA_WIDTH-1:0] z_in_x;
+    reg signed [DATA_WIDTH-1:0] z_in_y;
+    reg signed [DATA_WIDTH-1:0] z_in_z;
+
+    // Outputs from the FSM
+    wire signed [DATA_WIDTH-1:0] x_out_x;
+    wire signed [DATA_WIDTH-1:0] x_out_y;
+    wire signed [DATA_WIDTH-1:0] x_out_z;
+    wire done;
+    
+    // --- File I/O ---
+    integer infile;
+    integer outfile;
+    integer i;
+    integer read_status; // To check $fscanf
+    
+    // Memory to read from file
+    reg signed [DATA_WIDTH-1:0] noisy_data [0:N_STEPS*3-1];
+
+    // --- Instantiate the "Kalman Brain" ---
+    // FIX: Pass the correct K_SCALED value (137) from Python
+    kalman_fsm_3d #(
+        .DATA_WIDTH(DATA_WIDTH),
+        .K_SCALED(137) // *** SET TO 'Scaled K value' from Python ***
+    ) uut_fsm (
+        .clk(clk),
+        .rst(rst),
+        .start(start),
+        .z_in_x(z_in_x),
+        .z_in_y(z_in_y),
+        .z_in_z(z_in_z),
+        .x_out_x(x_out_x),
+        .x_out_y(x_out_y),
+        .x_out_z(x_out_z),
+        .done(done)
+    );
+    
+    // --- Clock Generator ---
+    always #10 clk = ~clk;
+
+    // --- Test Procedure ---
+    initial begin
+        $display("--- ROBOT TRACKER Testbench Started ---");
+        clk = 0;
+        rst = 1;
+        start = 0;
+        z_in_x = 0;
+        z_in_y = 0;
+        z_in_z = 0;
+        
+        // --- Open files ---
+        // Assumes 'noisy_camera.txt' is in the simulation directory
+        infile = $fopen("noisy_camera.txt", "r");
+        outfile = $fopen("verilog_filtered.txt", "w");
+        
+        if (infile == 0) begin
+            $display("ERROR: Could not open noisy_camera.txt");
+            $finish;
+        end
+        if (outfile == 0) begin
+            $display("ERROR: Could not open verilog_filtered.txt");
+            $finish;
+        end
+        
+        // --- Read ALL data into testbench memory first ---
+        $display("Reading input data file...");
+        i = 0;
+        while (!$feof(infile) && i < N_STEPS) begin
+            read_status = $fscanf(infile, "%d %d %d", 
+                noisy_data[i*3 + 0], 
+                noisy_data[i*3 + 1], 
+                noisy_data[i*3 + 2]);
+            i = i + 1;
+        end
+        $fclose(infile);
+        
+        #20 rst = 0; // Release reset
+        @(posedge clk);
+        
+        // FSM is now in IDLE
+        $display("FSM is in IDLE. Starting main loop...");
+        $fdisplay(outfile, "x,y,z"); // Write header for CSV
+
+        // --- Main Simulation Loop ---
+        for (i = 0; i < N_STEPS; i = i + 1) begin
+            // 1. Set inputs from our testbench memory
+            z_in_x = noisy_data[i*3 + 0];
+            z_in_y = noisy_data[i*3 + 1];
+            z_in_z = noisy_data[i*3 + 2];
+            
+            // 2. Start the FSM
+            @(posedge clk) start = 1;
+            
+            // 3. Wait for the 'done' signal
+            wait (done == 1);
+            
+            // 4. Lower the start flag
+            @(posedge clk) start = 0;
+            
+            // 5. Write the FSM's *filtered* output to our new file
+            $fdisplay(outfile, "%d,%d,%d", x_out_x, x_out_y, x_out_z);
+            
+            // Wait for FSM to be ready again
+            wait (done == 0); 
+        end
+        
+        $display("--- Main loop complete. All %d steps ran.", N_STEPS);
+        
+        // --- Clean up ---
+        $fclose(outfile);
+
+        #100 $finish;
+    end
+
+endmodule
