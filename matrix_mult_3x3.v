@@ -1,0 +1,155 @@
+/*
+ * File: matrix_mult_3x3.v
+ * Module: matrix_mult_3x3
+ * FIX: Output 'c_out' is full precision.
+ * FIX: FSM logic uses internal registers (row_reg, col_reg)
+ * and latched outputs (c_row, c_col) to prevent
+ * testbench race conditions.
+ */
+module matrix_mult_3x3 #(
+    parameter DATA_WIDTH = 32,
+    parameter M = 3,
+    parameter N = 3,
+    parameter P = 3
+)(
+    input  wire clk,
+    input  wire rst,
+    input  wire start,
+
+    // Interface for Matrix A
+    input  wire signed [DATA_WIDTH-1:0] a_in,
+    input  wire [3:0] a_addr, // $clog2(3*3) = 4 bits
+    input  wire a_wen,
+
+    // Interface for Matrix B
+    input  wire signed [DATA_WIDTH-1:0] b_in,
+    input  wire [3:0] b_addr, // $clog2(3*3) = 4 bits
+    input  wire b_wen,
+
+    // Output Interface
+    // FIX: Output is wide enough for the accumulator
+    // Verilog-2001 requires the $clog2 function for portability
+    output reg signed [2*DATA_WIDTH + 2 - 1:0] c_out, 
+    output reg c_valid,
+    output reg done,
+    
+    // Outputs to help the FSM track state
+    // ** FIX: These are the latched outputs for the testbench **
+    output reg [1:0] c_row, // $clog2(M) = 2 bits
+    output reg [1:0] c_col  // $clog2(P) = 2 bits
+);
+
+    localparam MAT_A_SIZE = M*N;
+    localparam MAT_B_SIZE = N*P;
+    // Note: $clog2(N) where N=3 is 2.
+    localparam ACC_WIDTH = (2*DATA_WIDTH) + 2; 
+
+    reg signed [DATA_WIDTH-1:0] A [0:MAT_A_SIZE-1];
+    reg signed [DATA_WIDTH-1:0] B [0:MAT_B_SIZE-1];
+    
+    // ** FIX: Internal FSM registers for state **
+    reg [1:0] row_reg; 
+    reg [1:0] col_reg;
+    reg [1:0] k_count; // $clog2(N) = 2 bits
+    
+    reg signed [ACC_WIDTH-1:0] accumulator;
+
+    localparam S_IDLE      = 3'd0;
+    localparam S_COMPUTE   = 3'd1;
+    localparam S_ACC_FINAL = 3'd2; 
+    localparam S_OUTPUT    = 3'd3;
+    localparam S_DONE      = 3'd4;
+    reg [2:0] state;
+
+    wire signed [2*DATA_WIDTH-1:0] product;
+    // ** FIX: 'assign' uses internal FSM registers **
+    assign product = $signed(A[row_reg*N + k_count]) * $signed(B[k_count*P + col_reg]);
+
+    // Memory write logic
+    always @(posedge clk) begin
+        if (a_wen) A[a_addr] <= a_in;
+        if (b_wen) B[b_addr] <= b_in;
+    end
+
+    // ** FIX: This block is removed as it's part of the main FSM now **
+    
+    // Main FSM logic
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state <= S_IDLE;
+            row_reg <= 0;
+            col_reg <= 0;
+            k_count <= 0;
+            accumulator <= 0;
+            c_valid <= 0;
+            done <= 0;
+            c_out <= 0;
+            c_row <= 0; // Reset latched output
+            c_col <= 0; // Reset latched output
+        end else begin
+            c_valid <= 0; // c_valid is only high for one cycle
+            done <= 0;    // done is only high for one cycle
+
+            case (state)
+                S_IDLE: begin
+                    if (start) begin
+                        row_reg <= 0;
+                        col_reg <= 0;
+                        k_count <= 0;
+                        accumulator <= 0;
+                        state <= S_COMPUTE;
+                    end
+                end
+                
+                S_COMPUTE: begin
+                    accumulator <= accumulator + product;
+                    if (k_count == N-1) begin
+                        k_count <= 0;
+                        state <= S_ACC_FINAL; // Done accumulating for this cell
+                    end else begin
+                        k_count <= k_count + 1;
+                    end
+                end
+
+                S_ACC_FINAL: begin
+                    // This state allows the last accumulation to finish
+                    state <= S_OUTPUT;
+                end
+                
+                S_OUTPUT: begin
+                    c_out <= accumulator; // FIX: Output the full 66-bit value
+                    c_valid <= 1;
+                    
+                    // ** FIX: Latch the *current* row/col to the outputs **
+                    c_row <= row_reg;
+                    c_col <= col_reg;
+                    
+                    accumulator <= 0; // Reset for next cell
+                    
+                    // ** FIX: Logic increments internal registers **
+                    if (col_reg == P-1) begin
+                        col_reg <= 0;
+                        if (row_reg == M-1) begin
+                            state <= S_DONE; // Finished all rows
+                        end else begin
+                            row_reg <= row_reg + 1;
+                            state <= S_COMPUTE; // Next row
+                        end
+                    end else begin
+                        col_reg <= col_reg + 1;
+                        state <= S_COMPUTE; // Next column
+                    end
+                end
+                
+                S_DONE: begin
+                    done <= 1;
+                    state <= S_IDLE;
+                end
+                
+                default: state <= S_IDLE;
+            endcase
+        end
+    end
+endmodule
+
+

@@ -1,0 +1,123 @@
+/*
+ * File: matrix_add_sub_3x3.v
+ * Module: matrix_add_sub_3x3
+ * Desc: 3x3 Matrix Add/Subtract "Calculator" (Verilog-2001)
+ *
+ * FIX 1: Corrected FSM state 'OUTPUT' to 'S_OUTPUT'.
+ * FIX 2: Optimized FSM by removing redundant 'S_COMPUTE' state.
+ */
+module matrix_add_sub_3x3 #(
+    parameter M = 3,
+    parameter P = 3,
+    parameter DATA_WIDTH = 32
+)(
+    input  wire clk,
+    input  wire rst,
+    input  wire start,
+    input  wire op, // 0 = ADD, 1 = SUBTRACT
+
+    // Interface for Matrix A
+    input  wire signed [DATA_WIDTH-1:0] a_in,
+    input  wire [3:0] a_addr, // $clog2(3*3) = 4 bits
+    input  wire a_wen,
+
+    // Interface for Matrix B
+    input  wire signed [DATA_WIDTH-1:0] b_in,
+    input  wire [3:0] b_addr, 
+    input  wire b_wen,
+
+    // Output Interface
+    output reg signed [DATA_WIDTH-1:0] c_out,
+    output reg c_valid,
+    output reg done,
+    
+    // Output to show current calculation address for FSM
+    output reg [3:0] i_count_out // $clog2(M*P)
+);
+
+    localparam MAT_SIZE = M*P;
+
+    // Internal BRAMs
+    reg signed [DATA_WIDTH-1:0] A [0:MAT_SIZE-1];
+    reg signed [DATA_WIDTH-1:0] B [0:MAT_SIZE-1];
+
+    // State machine and loop counters
+    reg [3:0] i_count; // Counter for 0 to 8
+    
+    // ** FIX 2: S_COMPUTE is redundant and removed **
+    localparam S_IDLE    = 0;
+    localparam S_OUTPUT  = 1;
+    localparam S_DONE    = 2;
+    // State machine can now be 2 bits
+    reg [1:0] state;
+
+    // This is the single adder/subtractor
+    wire signed [DATA_WIDTH-1:0] result;
+    assign result = (op == 0) ? ($signed(A[i_count]) + $signed(B[i_count])) 
+                              : ($signed(A[i_count]) - $signed(B[i_count]));
+
+    // Handle writing to the internal BRAMs
+    always @(posedge clk) begin
+        if (a_wen) A[a_addr] <= a_in;
+        if (b_wen) B[b_addr] <= b_in;
+    end
+    
+    // We update the output index register in a separate block
+    // This logic is still correct with the optimized FSM
+    always @(posedge clk) begin
+        if (rst) begin
+            i_count_out <= 0;
+        end else if (state == S_OUTPUT) begin
+             i_count_out <= i_count;
+        end
+    end
+
+    // The Main FSM
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state <= S_IDLE;
+            i_count <= 0;
+            c_valid <= 0;
+            done <= 0;
+            c_out <= 0;
+        end else begin
+            c_valid <= 0; // c_valid is only high for one cycle
+            done <= 0;    // done is only high for one cycle
+
+            case (state)
+                S_IDLE: begin
+                    if (start) begin
+                        i_count <= 0;
+                        // ** FIX 2: Go directly to S_OUTPUT **
+                        state <= S_OUTPUT;
+                    end
+                end
+                
+                // ** FIX 2: S_COMPUTE state removed **
+
+                // ** FIX 1: Changed 'OUTPUT' to 'S_OUTPUT' **
+                S_OUTPUT: begin
+                    c_out <= result;
+                    c_valid <= 1; 
+                    
+                    if (i_count == (MAT_SIZE - 1)) begin
+                        state <= S_DONE; // Finished all elements
+                    end else begin
+                        i_count <= i_count + 1;
+                        // ** FIX 2: Stay in S_OUTPUT to process next element **
+                        state <= S_OUTPUT; 
+                    end
+                end
+                
+                S_DONE: begin
+                    done <= 1;
+                    state <= S_IDLE;
+                end
+                
+                default: state <= S_IDLE;
+            endcase
+        end
+    end
+endmodule
+
+

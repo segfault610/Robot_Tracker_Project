@@ -1,0 +1,288 @@
+ls
+# Robot_Tracker_Project.cr.mti  sim            
+# Robot_Tracker_Project.mpf     tb_3x3_mult.v  
+# matrix_mult_3x3.v             transcript     
+# rtl                           work           
+pwd
+# C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Error opening C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/(vlog-13069) C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v
+# Path name 'C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/(vlog-13069) C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v' doesn't exist.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+# Load canceled
+vsim -gui work.tb_3x3_mult
+# vsim -gui work.tb_3x3_mult 
+# Start time: 10:42:30 on Nov 03,2025
+# Loading work.tb_3x3_mult
+# Loading work.matrix_mult_3x3
+# ** Error (suppressible): (vsim-3584) C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v(59): Module parameter 'ACC_WIDTH' not found for override.
+#    Time: 0 ps  Iteration: 0  Instance: /tb_3x3_mult File: C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v
+# Error loading design
+# End time: 10:42:30 on Nov 03,2025, Elapsed time: 0:00:00
+# Errors: 1, Warnings: 21
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_mult
+# vsim -gui work.tb_3x3_mult 
+# Start time: 10:44:44 on Nov 03,2025
+# Loading work.tb_3x3_mult
+# Loading work.matrix_mult_3x3
+# ** Error (suppressible): (vsim-3584) C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v(59): Module parameter 'ACC_WIDTH' not found for override.
+#    Time: 0 ps  Iteration: 0  Instance: /tb_3x3_mult File: C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v
+# Error loading design
+# End time: 10:44:44 on Nov 03,2025, Elapsed time: 0:00:00
+# Errors: 1, Warnings: 2
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+# Load canceled
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_mult
+# vsim -gui work.tb_3x3_mult 
+# Start time: 10:45:35 on Nov 03,2025
+# Loading work.tb_3x3_mult
+# Loading work.matrix_mult_3x3
+run -all
+# --- 3x3 Multiplier Testbench Started ---
+# Loading Matrix A (Identity)...
+# Loading Matrix B (Simple Pattern)...
+# --- Starting computation ---
+# --- Computation complete ---
+# ERROR at C[          1]: Expected           2, Got           1
+# ERROR at C[          2]: Expected           3, Got           2
+# ERROR at C[          3]: Expected           4, Got           3
+# ERROR at C[          4]: Expected           5, Got           4
+# ERROR at C[          5]: Expected           6, Got           5
+# ERROR at C[          6]: Expected           7, Got           9
+# ERROR at C[          7]: Expected           8, Got           7
+# ERROR at C[          8]: Expected           9, Got           8
+# --- TEST FAILED:           8 errors found ---
+# ** Note: $finish    : C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v(145)
+#    Time: 1490 ns  Iteration: 0  Instance: /tb_3x3_mult
+# 1
+# Break in Module tb_3x3_mult at C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v line 145
+quit -sim
+# End time: 10:46:12 on Nov 03,2025, Elapsed time: 0:00:37
+# Errors: 0, Warnings: 3
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_mult
+# vsim -gui work.tb_3x3_mult 
+# Start time: 10:48:27 on Nov 03,2025
+# Loading work.tb_3x3_mult
+# Loading work.matrix_mult_3x3
+run -all
+# --- 3x3 Multiplier Testbench Started ---
+# Loading Matrix A (Identity)...
+# Loading Matrix B (Simple Pattern)...
+# --- Starting computation ---
+# --- Computation complete ---
+# ERROR at C[          1]: Expected           2, Got           1
+# ERROR at C[          2]: Expected           3, Got           2
+# ERROR at C[          3]: Expected           4, Got           3
+# ERROR at C[          4]: Expected           5, Got           4
+# ERROR at C[          5]: Expected           6, Got           5
+# ERROR at C[          6]: Expected           7, Got           9
+# ERROR at C[          7]: Expected           8, Got           7
+# ERROR at C[          8]: Expected           9, Got           8
+# --- TEST FAILED:           8 errors found ---
+# ** Note: $finish    : C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v(145)
+#    Time: 1490 ns  Iteration: 0  Instance: /tb_3x3_mult
+# 1
+# Break in Module tb_3x3_mult at C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v line 145
+quit -sim
+# End time: 10:50:06 on Nov 03,2025, Elapsed time: 0:01:39
+# Errors: 0, Warnings: 2
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 3 errors.
+# 2 compiles, 1 failed with 3 errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v failed with 1 errors.
+# 2 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# 2 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_mult
+# vsim -gui work.tb_3x3_mult 
+# Start time: 10:56:38 on Nov 03,2025
+# Loading work.tb_3x3_mult
+# Loading work.matrix_mult_3x3
+run -all
+# --- 3x3 Multiplier Testbench Started ---
+# Loading Matrix A (Identity)...
+# Loading Matrix B (Simple Pattern)...
+# --- Starting computation ---
+# --- Computation complete ---
+# --- TEST PASSED: 3x3 Multiplier is correct! ---
+# ** Note: $finish    : C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v(150)
+#    Time: 1490 ns  Iteration: 0  Instance: /tb_3x3_mult
+# 1
+# Break in Module tb_3x3_mult at C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_mult.v line 150
+quit -sim
+# End time: 10:57:29 on Nov 03,2025, Elapsed time: 0:00:51
+# Errors: 0, Warnings: 5
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v failed with 1 errors.
+# Compile of tb_3x3_add_sub.v was successful.
+# 4 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# 4 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_add_sub
+# vsim -gui work.tb_3x3_add_sub 
+# Start time: 11:03:32 on Nov 03,2025
+# Loading work.tb_3x3_add_sub
+# Loading work.matrix_add_sub_3x3
+run -all
+# --- 3x3 Add/Sub Testbench Started ---
+# Loading Matrix A = [1,2,3...9]
+# Loading Matrix B = [10,10...10]
+# --- Test 1: ADD Operation ---
+# --- ADD complete ---
+# --- Test 2: SUBTRACT Operation ---
+# --- SUBTRACT complete ---
+# --- TEST PASSED: 3x3 Add/Sub is correct! ---
+# ** Note: $finish    : C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_add_sub.v(134)
+#    Time: 1050 ns  Iteration: 0  Instance: /tb_3x3_add_sub
+# 1
+# Break in Module tb_3x3_add_sub at C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_add_sub.v line 134
+quit -sim
+# End time: 11:04:04 on Nov 03,2025, Elapsed time: 0:00:32
+# Errors: 0, Warnings: 5
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v failed with 1 errors.
+# Compile of tb_3x3_transpose.v was successful.
+# 6 compiles, 1 failed with 1 error.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# 6 compiles, 0 failed with no errors.
+vsim -gui work.tb_3x3_transpose
+# vsim -gui work.tb_3x3_transpose 
+# Start time: 11:19:14 on Nov 03,2025
+# Loading work.tb_3x3_transpose
+# Loading work.matrix_transpose_3x3
+run -all
+# --- 3x3 Transpose Testbench Started ---
+# Loading Matrix A = [1,2,3...9]
+# --- Test: TRANSPOSE Operation ---
+# --- TRANSPOSE complete ---
+# --- TEST PASSED: 3x3 Transpose is correct! ---
+# ** Note: $finish    : C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_transpose.v(105)
+#    Time: 570 ns  Iteration: 0  Instance: /tb_3x3_transpose
+# 1
+# Break in Module tb_3x3_transpose at C:/Users/Jonathan/Desktop/Code/ModelSimProjects/Robot_Tracker_Project/tb_3x3_transpose.v line 105
+quit -sim
+# End time: 11:19:46 on Nov 03,2025, Elapsed time: 0:00:32
+# Errors: 0, Warnings: 11
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 0 failed with no errors.
+# Compile of matrix_mult_3x3.v failed with 2 errors.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 1 failed with 2 errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 0 failed with no errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v failed with 2 errors.
+# 7 compiles, 1 failed with 2 errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 0 failed with no errors.
+# Load canceled
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 0 failed with no errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v failed with 3 errors.
+# 7 compiles, 1 failed with 3 errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v failed with 3 errors.
+# 7 compiles, 1 failed with 3 errors.
+# Compile of matrix_mult_3x3.v was successful.
+# Compile of tb_3x3_mult.v was successful.
+# Compile of matrix_add_sub_3x3.v was successful.
+# Compile of tb_3x3_add_sub.v was successful.
+# Compile of matrix_transpose_3x3.v was successful.
+# Compile of tb_3x3_transpose.v was successful.
+# Compile of kalman_fsm_3d.v was successful.
+# 7 compiles, 0 failed with no errors.

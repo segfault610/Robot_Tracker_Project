@@ -1,0 +1,163 @@
+/*
+ * File: tb_3x3_mult.v
+ * Testbench for the 3x3 Multiplier (Verilog-2001)
+ *
+ * FIX 1: Cleaned up syntax errors (stray '}' and '##')
+ * FIX 2: 'c_out' wire is 32-bits to match module's truncated output
+ * FIX 3: Instantiation connects to 'matrix_mult_3x3'
+ * FIX 4: Port connections are correct (using c_row, c_col)
+ * FIX 5: Receiver loop uses local wires (uut_row_out, uut_col_out)
+ */
+`timescale 1ns / 1ps
+
+module tb_3x3_mult;
+
+    // --- Parameters ---
+    parameter M = 3;
+    parameter N = 3;
+    parameter P = 3;
+    parameter DATA_WIDTH = 32;
+    // This must match the (2*32) + $clog2(3) = 66 bits
+    parameter ACC_WIDTH = (2*DATA_WIDTH) + 2; 
+
+    // --- Wires and Regs ---
+    reg clk;
+    reg rst;
+    reg start;
+    
+    reg signed [DATA_WIDTH-1:0] a_in;
+    reg [3:0] a_addr; // $clog2(3*3) = 4 bits
+    reg a_wen;
+    
+    reg signed [DATA_WIDTH-1:0] b_in;
+    reg [3:0] b_addr;
+    reg b_wen;
+
+    // ** FIX 2: Wire matches the 32-bit output port of the module **
+    wire signed [DATA_WIDTH-1:0] c_out; 
+    wire c_valid;
+    wire done;
+    
+    // Wires to connect to the module's c_row/c_col outputs
+    wire [1:0] uut_row_out;
+    wire [1:0] uut_col_out;
+    
+    integer i;
+    integer errors = 0;
+    
+    // Testbench memory to check results
+    reg signed [DATA_WIDTH-1:0] c_expected [0:M*P-1];
+    reg signed [DATA_WIDTH-1:0] c_actual [0:M*P-1];
+
+    // --- Instantiate the "Calculator" ---
+    // ** FIX 3: Instantiating the 'matrix_mult_3x3' module **
+    matrix_mult_3x3 #( 
+        .M(M),
+        .N(N),
+        .P(P),
+        .DATA_WIDTH(DATA_WIDTH),
+        .ACC_WIDTH(ACC_WIDTH) // Pass the ACC_WIDTH
+    ) uut (
+        .clk(clk),
+        .rst(rst),
+        .start(start),
+        
+        .a_in(a_in),
+        .a_addr(a_addr),
+        .a_wen(a_wen),
+        
+        .b_in(b_in),
+        .b_addr(b_addr),
+        .b_wen(b_wen),
+        
+        .c_out(c_out),       // 32-bit wire to 32-bit port
+        .c_valid(c_valid),
+        .done(done),
+        
+        // ** FIX 4: Connect to the correct output ports **
+        .c_row(uut_row_out),
+        .c_col(uut_col_out) 
+    );
+
+    // --- Clock Generator ---
+    always #10 clk = ~clk;
+
+    // --- Test Procedure ---
+    initial begin
+        $display("--- 3x3 Multiplier Testbench Started ---");
+        clk = 0;
+        rst = 1;
+        start = 0;
+        a_wen = 0;
+        b_wen = 0;
+        a_addr = 0;
+        b_addr = 0;
+        a_in = 0;
+        b_in = 0;
+
+        #20 rst = 0; // Release reset
+        @(posedge clk);
+        
+        $display("Loading Matrix A (Identity)...");
+        // Load A = 3x3 Identity
+        for (i = 0; i < M*N; i = i + 1) begin
+            a_wen = 1;
+            a_addr = i;
+            if (i/N == i%N) a_in = 1; else a_in = 0;
+            @(posedge clk);
+        end
+        a_wen = 0;
+
+        $display("Loading Matrix B (Simple Pattern)...");
+        // Load B = [1, 2, 3, 4, 5, 6, 7, 8, 9]
+        for (i = 0; i < N*P; i = i + 1) begin
+            b_wen = 1;
+            b_addr = i;
+            b_in = i + 1; 
+            @(posedge clk);
+        end
+        b_wen = 0;
+        
+        // C_expected = A(Identity) * B = B
+        for (i = 0; i < M*P; i = i + 1) begin
+            c_expected[i] = i + 1;
+        end
+
+        $display("--- Starting computation ---");
+        @(posedge clk) start = 1;
+        
+        wait (done == 1);
+        
+        @(posedge clk) start = 0;
+        $display("--- Computation complete ---");
+        
+        #20; // Wait a few cycles for all signals to settle
+
+        // Check results
+        for (i = 0; i < M*P; i = i + 1) begin
+            if (c_actual[i] != c_expected[i]) begin
+                errors = errors + 1;
+                $display("ERROR at C[%d]: Expected %d, Got %d", i, c_expected[i], c_actual[i]);
+            end
+        end
+
+        if (errors == 0) begin
+            $display("--- TEST PASSED: 3x3 Multiplier is correct! ---");
+        end else begin
+            $display("--- TEST FAILED: %d errors found ---", errors);
+        end
+
+        #100 $finish;
+    end
+    
+    // --- "Receiver" loop ---
+    always @(posedge clk) begin
+        if (c_valid) begin
+            // ** FIX 5: Use the local wires, not hierarchical access **
+            c_actual[uut_row_out * P + uut_col_out] <= c_out;
+        end
+    end
+
+endmodule
+
+

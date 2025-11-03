@@ -1,0 +1,116 @@
+module matrix_transpose_3x3 #(
+    parameter M = 3,
+    parameter P = 3,
+    parameter DATA_WIDTH = 32
+)(
+    input  wire clk,
+    input  wire rst,
+    input  wire start,
+
+    // Interface for Matrix A (the input matrix)
+    input  wire signed [DATA_WIDTH-1:0] a_in,
+    input  wire [3:0] a_addr, // $clog2(3*3) = 4 bits
+    input  wire a_wen,
+
+    // Output Interface (for the transposed matrix)
+    output reg signed [DATA_WIDTH-1:0] c_out,
+    output reg c_valid,
+    output reg done,
+    
+    // Output to show current calculation address for FSM
+    output reg [3:0] i_count_out // $clog2(M*P)
+);
+
+    localparam MAT_SIZE = M*P;
+
+    // Internal BRAM for Matrix A
+    reg signed [DATA_WIDTH-1:0] A [0:MAT_SIZE-1];
+
+    // State machine and loop counters
+    reg [1:0] row; // $clog2(M) = 2 bits
+    reg [1:0] col; // $clog2(P) = 2 bits
+    reg [3:0] i_count; // Counter for 0 to 8
+    
+    localparam S_IDLE      = 0;
+    localparam S_COMPUTE   = 1;
+    localparam S_OUTPUT    = 2;
+    localparam S_DONE      = 3;
+    reg [1:0] state;
+
+    // This is the transpose logic: read A[col][row]
+    // A[c,r] in a flat array is (col * M + row)
+    // We want to output row-by-row, so the FSM will iterate
+    // through 'row' and 'col' normally (0,0), (0,1), (0,2)...
+    // The address we read from A will be the transposed one.
+    wire signed [DATA_WIDTH-1:0] result;
+    assign result = $signed(A[col*M + row]); // Read A[j][i]
+
+    // Handle writing to the internal BRAM
+    always @(posedge clk) begin
+        if (a_wen) A[a_addr] <= a_in;
+    end
+    
+    // We update the output index register in a separate block
+    always @(posedge clk) begin
+        if (rst) begin
+            i_count_out <= 0;
+        end else if (state == S_OUTPUT) begin
+             i_count_out <= (row * P + col);
+        end
+    end
+
+    // The Main FSM
+    always @(posedge clk or posedge rst) begin
+        if (rst) begin
+            state <= S_IDLE;
+            row <= 0;
+            col <= 0;
+            c_valid <= 0;
+            done <= 0;
+            c_out <= 0;
+        end else begin
+            c_valid <= 0; // c_valid is only high for one cycle
+            done <= 0;    // done is only high for one cycle
+
+            case (state)
+                S_IDLE: begin
+                    if (start) begin
+                        row <= 0;
+                        col <= 0;
+                        state <= S_COMPUTE;
+                    end
+                end
+                
+                S_COMPUTE: begin
+                    // Calculation is combinational, move to output
+                    state <= S_OUTPUT; 
+                end
+
+                OUTPUT: begin
+                    c_out <= result;
+                    c_valid <= 1; 
+                    
+                    if (col == P-1) begin
+                        col <= 0;
+                        if (row == M-1) begin
+                            state <= S_DONE; // Finished all rows
+                        end else begin
+                            row <= row + 1;
+                            state <= S_COMPUTE; // Next row
+                        end
+                    end else begin
+                        col <= col + 1;
+                        state <= S_COMPUTE; // Next column
+                    end
+                end
+                
+                S_DONE: begin
+                    done <= 1;
+                    state <= S_IDLE;
+                end
+                
+                default: state <= S_IDLE;
+            endcase
+        end
+    end
+endmodule
