@@ -1,4 +1,3 @@
-
 ##### first version - spiral
 import numpy as np
 import os
@@ -159,7 +158,7 @@ write_to_file("true_path.txt", true_x, true_y, true_z)
 print("--- Python Data Generation Complete! ---")
 '''
 
-"""
+'''
 ####### third version different shape ########
 import numpy as np
 import os
@@ -237,4 +236,4 @@ write_to_file("true_path.txt", true_x, true_y, true_z)
 write_to_file("drifty_motors.txt", drifty_path_x, drifty_path_y, drifty_path_z)
 
 print("--- Python Data Generation Complete! ---")
-"""
+'''
